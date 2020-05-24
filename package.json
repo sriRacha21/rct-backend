@@ -1,0 +1,18 @@
+{
+  "name": "rct-backend",
+  "version": "0.0.1",
+  "description": "Connect to and modify the firestore becakend for Rutgers Course Tracker.",
+  "main": "dist/index.js",
+  "scripts": {
+    "test": "node dist/index.js"
+  },
+  "author": "sriRacha21",
+  "license": "ISC",
+  "devDependencies": {
+    "typescript": "^3.9.3"
+  },
+  "dependencies": {
+    "bent": "^7.3.1",
+    "firebase-admin": "^8.12.1"
+  }
+}
