@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "bent": "^7.3.1",
-    "firebase-admin": "^8.12.1"
+    "firebase-admin": "^8.12.1",
+    "pretty-ms": "^7.0.0"
   }
 }

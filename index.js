@@ -1,7 +1,9 @@
+#!/usr/bin/env node
 // imports
 const fs = require('fs');
 const admin = require('firebase-admin');
 const bent = require('bent');
+const prettyMs = require('pretty-ms');
 
 // constants
 const DEBUG = true;
@@ -22,6 +24,8 @@ const seasonInt = {
     9: 'fall'
 }
 
+// variable for checking how long this took
+const before = Date.now();
 // init firestore
 const app = admin.initializeApp({
     credential: admin.credential.applicationDefault(),
@@ -85,7 +89,7 @@ async function firestoreCourseData() {
                     section: section.number,
                 };
 
-                const setDoc = db
+                db
                     .collection("currentCourses")
                     .doc(courseRequestArr[idx].season)
                     .collection("sections")
@@ -95,18 +99,12 @@ async function firestoreCourseData() {
                         if( DEBUG ) console.log("Wrote data to firestore successfully:", writeData);
                     })
                     .catch(err => console.error('Error setting document:', err));
-
-                // setDoc.get()
-                //     .then( doc => {
-                //         if( !doc.exists ) console.log('Document could not be set!');
-                //         else console.log('Document data: ', document.data);
-                //     })
-                //     .catch( err => {
-                //         console.error('Error getting document:', err);
-                //     });
             });
         });
     });
+    // print out how long it took
+    const after = Date.now();
+    console.log(`Operation completed in ${prettyMs(after-before)}.`);
 }
 
 function getSeasonFromFile(path) {
