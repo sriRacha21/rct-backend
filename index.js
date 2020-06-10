@@ -28,6 +28,15 @@ const seasonInt = {
 }
 
 // functions
+// returns a new object with the values at each key mapped using mapFn(value)
+function objectMap(object, mapFn) {
+    return Object.keys(object).reduce(function(result, key) {
+        result[key] = mapFn(object[key]);
+        return result;
+    }, {})
+}
+
+// main function for updating firestore
 async function firestoreCourseData( db ) {
     // variable for checking how long this took
     const before = Date.now();
@@ -94,16 +103,37 @@ async function firestoreCourseData( db ) {
     // write data from maps to firestore
     for( const season in indexMap ) {
         console.log(`Writing data to season ${season}:`, indexMap[season]);
-        db
-            .collection("currentCourses")
-            .doc(season)
+        // get appropriate season doc
+        const seasonColl = db
+            .collection(season)
+        // set sections
+        seasonColl
+            .doc("sections")
             .set({
-                sections: Object.keys(indexMap[season]).map(key => indexMap[season][key].section),
-                names: Object.keys(indexMap[season]).map(key => indexMap[season][key].name),
-                subjects: Object.keys(indexMap[season]).map(key => indexMap[season][key].subject)
+                sections: objectMap(indexMap[season], value => value.section)
             })
             .then( writeData => {
-                if( DEBUG ) console.log("Wrote data to firestore successfully:", writeData);
+                if( DEBUG ) console.log("Wrote sections to firestore successfully:", writeData);
+            })
+            .catch(err => console.error('Error setting document:', err));
+        // set names
+        seasonColl
+            .doc("names")
+            .set({
+                names: objectMap(indexMap[season], value => value.name)
+            })
+            .then( writeData => {
+                if( DEBUG ) console.log("Wrote names to firestore successfully:", writeData);
+            })
+            .catch(err => console.error('Error setting document:', err));
+        // set subjects
+        seasonColl
+            .doc("subjects")
+            .set({
+                subjects: objectMap(indexMap[season], value => value.subject)
+            })
+            .then( writeData => {
+                if( DEBUG ) console.log("Wrote subjects to firestore successfully:", writeData);
             })
             .catch(err => console.error('Error setting document:', err));
     }
