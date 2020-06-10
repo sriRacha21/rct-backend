@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 // imports
 const fs = require('fs');
-const admin = require('firebase-admin');
 const bent = require('bent');
 const prettyMs = require('pretty-ms');
 
