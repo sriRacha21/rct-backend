@@ -83,11 +83,6 @@ async function firestoreCourseData( db ) {
                 // construct maps
                 if( !indexMap[courseRequestArr[idx].season] ) indexMap[courseRequestArr[idx].season] = {};
                 indexMap[courseRequestArr[idx].season][section.index] = course.subject;
-                // let sectionInfo = {
-                //     subjectNum: course.subject,
-                //     courseName: course.title,
-                //     section: section.number,
-                // };
             });
         });
     });
@@ -98,7 +93,9 @@ async function firestoreCourseData( db ) {
         db
             .collection("currentCourses")
             .doc(season)
-            .set(indexMap[season])
+            .update({
+                sections: indexMap[season]
+            })
             .then( writeData => {
                 if( DEBUG ) console.log("Wrote data to firestore successfully:", writeData);
             })
