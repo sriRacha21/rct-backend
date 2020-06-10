@@ -109,5 +109,4 @@ typings/
 dist/
 
 # ignore output folder, except for the placeholder
-output/*
-!output/placeholder.txt
+output.txt

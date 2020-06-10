@@ -1,9 +1,13 @@
 #!/usr/bin/env node
 // imports
 const fs = require('fs');
-const admin = require('firebase-admin');
 const bent = require('bent');
 const prettyMs = require('pretty-ms');
+const admin = require('firebase-admin');
+const app = admin.initializeApp({
+    credential: admin.credential.applicationDefault(),
+    databaseURL: 'https://rutgers-course-tracker.firebaseio.com/'
+});
 
 // constants
 const DEBUG = true;
@@ -22,7 +26,6 @@ const seasonInt = {
     7: 'summer',
     9: 'fall'
 }
-
 
 // functions
 async function firestoreCourseData( db ) {
@@ -63,7 +66,8 @@ async function firestoreCourseData( db ) {
         process.exit();
     }
 
-    // put data in firestore for each section
+    // construct maps for insertion into firestore
+    let indexMap = {};
     subjects.forEach( (subject,idx) => {
         subject.forEach(course => {
             if( !course.sections ) {
@@ -76,25 +80,30 @@ async function firestoreCourseData( db ) {
                     return;
                 }
 
-                let sectionInfo = {
-                    subjectNum: course.subject,
-                    courseName: course.title,
-                    section: section.number,
-                };
-
-                db
-                    .collection("currentCourses")
-                    .doc(courseRequestArr[idx].season)
-                    .collection("sections")
-                    .doc(section.index)
-                    .set(sectionInfo)
-                    .then( writeData => {
-                        if( DEBUG ) console.log("Wrote data to firestore successfully:", writeData);
-                    })
-                    .catch(err => console.error('Error setting document:', err));
+                // construct maps
+                if( !indexMap[courseRequestArr[idx].season] ) indexMap[courseRequestArr[idx].season] = {};
+                indexMap[courseRequestArr[idx].season][section.index] = course.subject;
+                // let sectionInfo = {
+                //     subjectNum: course.subject,
+                //     courseName: course.title,
+                //     section: section.number,
+                // };
             });
         });
     });
+
+    // write data from maps to firestore
+    for( const season in indexMap ) {
+        console.log(`Writing data to season ${season}:`, indexMap[season]);
+        db
+            .collection("currentCourses")
+            .doc(season)
+            .set(indexMap[season])
+            .then( writeData => {
+                if( DEBUG ) console.log("Wrote data to firestore successfully:", writeData);
+            })
+            .catch(err => console.error('Error setting document:', err));
+    }
     // print out how long it took
     const after = Date.now();
     console.log(`Operation completed in ${prettyMs(after-before)}.`);
@@ -126,5 +135,5 @@ function getSeasonFromFile(path) {
     return season;
 }
 
-// run every 24 hours
-exports.firestoreCourseData = firestoreCourseData;
+// run
+firestoreCourseData( admin.firestore() );
