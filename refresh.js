@@ -94,7 +94,8 @@ async function firestoreCourseData( db ) {
                 indexMap[courseRequestArr[idx].season][section.index] = {
                     subject: course.subject,
                     name: course.title,
-                    section: section.number
+                    section: section.number,
+                    course: course.courseNumber
                 };
             });
         });
@@ -134,6 +135,16 @@ async function firestoreCourseData( db ) {
             })
             .then( writeData => {
                 if( DEBUG ) console.log("Wrote subjects to firestore successfully:", writeData);
+            })
+            .catch(err => console.error('Error setting document:', err));
+        // set course numbers
+        seasonColl
+            .doc("courses")
+            .set({
+                courses: objectMap(indexMap[season], value => value.course)
+            })
+            .then( writeData => {
+                if( DEBUG ) console.log("Wrote course numbers to firestore successfully:", writeData);
             })
             .catch(err => console.error('Error setting document:', err));
     }
