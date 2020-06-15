@@ -17,39 +17,45 @@ const intSeason = {
     'summer': 7,
     'fall': 9
 }
+// user snapshots array
+let trackersSnapshot;
 
-// this function checks if a user's class is open and notifies them if it is
-async function checkNotify( db ) {
-    // loop over all active users
-    const usersSnapshot = await db
-        .collection("users")
+// this function populates the userssnapshot obj
+async function populateSnapshot( db ) {
+    trackersSnapshot = await db
+        .collection("trackers")
+        .where("active", "==", true)
         .get();
-    
-    // stop if collection is empty
-    if( usersSnapshot.empty ) {
-        console.warn("No users in collection.");
-        return;
-    }
-    // find rToken in each document, if it exists go to trackers coll
-    usersSnapshot.forEach(async doc => {
-        const uid = doc.get("user")
-        const rToken = doc.get("rToken");
-        if( !uid || !rToken ) return;
-        // get the tracker doc with that uid
-        const trackersSnapshot = await db
-            .collection("trackers")
-            .where("active", "==", true)
+}
+
+// listen to updates on the collection
+admin.firestore()
+    .collection("trackers")
+    .where("active", "==", true)
+    .onSnapshot(querySnapshot => {
+        console.log("User event listener fired.");
+        trackersSnapshot = querySnapshot;
+    });
+
+async function checkNotify( db ) {
+    // loop over active trackers, which has already been populated
+    trackersSnapshot.forEach(async trackerDoc => {
+        // gather relevant fields
+        const subject = trackerDoc.get("subject");
+        const semester = trackerDoc.get("semester");
+        const year = trackerDoc.get("createdTime").toDate().getUTCFullYear() + (semester.toLowerCase() == "spring" ? 1 : 0);
+        const index = trackerDoc.get("index");
+        const course = trackerDoc.get("courseNumber");
+        const courseName = trackerDoc.get("course");
+        const uid = trackerDoc.get("user");
+        // find users that match the uid from the trackerdoc
+        const usersSnapshot = await db
+            .collection("users")
             .where("user", "==", uid)
             .get();
-        if( trackersSnapshot.empty ) return;
-        // for each course that that user is tracking, check if the course is open and send the notification if it is
-        trackersSnapshot.forEach(async trackerDoc => {
-            const subject = trackerDoc.get("subject");
-            const semester = trackerDoc.get("semester");
-            const year = trackerDoc.get("createdTime").toDate().getUTCFullYear() + (semester.toLowerCase() == "spring" ? 1 : 0);
-            const index = trackerDoc.get("index");
-            const course = trackerDoc.get("courseNumber");
-            const courseName = trackerDoc.get("course");
+        usersSnapshot.forEach(async userDoc => {
+            // get relevant fields
+            const rToken = userDoc.get("rToken");
             // query SOC
             const requestURI = `${baseCoursesURI}?subject=${subject}&semester=${intSeason[semester]}${year}&campus=NB&level=UG`;
             console.log(`Requesting URI: ${requestURI}`);
@@ -64,48 +70,65 @@ async function checkNotify( db ) {
             const chosenSection = chosenCourse.sections.find(s => s.index == index);
             if( !chosenSection ) return;
             // if section is open notify user
-            if( chosenSection.openStatus ) {
-                admin.messaging().send({
-                    data: {
-                        index: index.toString(),
-                        year: year.toString(),
-                        sem: intSeason[semester].toString()
-                    }, android: {
-                        notification: {
-                            sound: "default"
-                        },
-                        priority: "normal"
-                    }, apns: {
-                        payload: {
-                            aps: {
-                                badge: 1,
-                                sound: "default"
-                            },
-                        },
-                    }, notification: {
-                        title: `${courseName} (${index}) is now open!`,
-                        body: "Tap to open WebReg",
-                    },
-                    token: rToken
-                })
-                .then((response) => {
-                    // Response is a message ID string.
-                    console.log('Successfully sent message:', response);
-                    // turn doc active to false
-                    trackerDoc.ref.update({
-                        active: false
-                    })
-                })
-                .catch((error) => {
-                    console.log('Error sending message:', error);
-                });
-            }
-        });
-    });
+            if( chosenSection.openStatus ) sendOpenCourseNotif({
+                // messaging service
+                messaging: admin.messaging(), 
+                // token to send notification
+                rToken: rToken, 
+                // course information
+                courseName: courseName,
+                index: index,
+                year: year,
+                semester: semester,
+                // document to turn to false
+                trackerDoc: trackerDoc
+            });
+        })
+    })
+    // start the function again in 30 seconds
+    setTimeout( checkNotify, repeatRate, db );
+}
 
-    // run again in 30 seconds
-    setTimeout( checkNotify, repeatRate, db )
+// send the notification
+async function sendOpenCourseNotif({ messaging, rToken, courseName, index, year, semester, trackerDoc }) {
+    messaging.send({
+        data: {
+            index: index.toString(),
+            year: year.toString(),
+            sem: intSeason[semester].toString()
+        }, android: {
+            notification: {
+                sound: "default"
+            },
+            priority: "normal"
+        }, apns: {
+            payload: {
+                aps: {
+                    // badge: 1,
+                    sound: "default"
+                },
+            },
+        }, notification: {
+            title: `${courseName} (${index}) is now open!`,
+            body: "Tap to open WebReg",
+        },
+        token: rToken
+    })
+    .then((response) => {
+        // Response is a message ID string.
+        console.log('Successfully sent message:', response);
+        // turn doc active to false
+        trackerDoc.ref.update({
+            active: false
+        })
+    })
+    .catch((error) => {
+        console.log('Error sending message:', error);
+    });
 }
 
 // run
-checkNotify( admin.firestore() );
+(async () => {
+    await populateSnapshot( admin.firestore() );
+    await checkNotify( admin.firestore() );
+})();
