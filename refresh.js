@@ -53,7 +53,13 @@ async function firestoreCourseData( db ) {
         console.log(`Requesting URI: ${requestURI}`);
         return getJSON(requestURI);
     });
-    const subjectList = (await Promise.all(subjectRequestArr))[0];
+    let subjectList;
+    try {
+        subjectList = (await Promise.all(subjectRequestArr))[0];
+    } catch( e ) {
+        console.error( "SOC API Connection error:", e );
+        process.exit();
+    }
     // get courses from SOC
     const courseRequestArr = [];
     subjectList.forEach(subject => {

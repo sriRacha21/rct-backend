@@ -59,7 +59,13 @@ async function checkNotify( db ) {
             // query SOC
             const requestURI = `${baseCoursesURI}?subject=${subject}&semester=${intSeason[semester]}${year}&campus=NB&level=UG`;
             console.log(`Requesting URI: ${requestURI}`);
-            const courses = await getJSON(requestURI);
+            let courses;
+            try {
+                courses = await getJSON(requestURI);
+            } catch( e ) {
+                console.error( "SOC API Connection error:", e );
+                return;
+            }
             const chosenCourse = courses.find(c => c.courseNumber == course);
             if( !chosenCourse ) {
                 console.error(`Course ${course} could not be found for user ${uid}.`);
