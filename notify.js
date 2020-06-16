@@ -9,7 +9,7 @@ const getJSON = bent('json');
 // constants
 const baseCoursesURI = "http://sis.rutgers.edu/oldsoc/courses.json";
 // every 30 seconds
-const repeatRate = 30000; 
+const repeatRate = 30000;
 // dictionary
 const intSeason = {
     'winter': 0,
@@ -53,6 +53,7 @@ async function checkNotify( db ) {
         const usersSnapshot = await db
             .collection("users")
             .where("user", "==", uid)
+            .limit(1)
             .get();
         usersSnapshot.forEach(async userDoc => {
             // get relevant fields
@@ -79,9 +80,9 @@ async function checkNotify( db ) {
             // if section is open notify user
             if( chosenSection.openStatus ) sendOpenCourseNotif({
                 // messaging service
-                messaging: admin.messaging(), 
+                messaging: admin.messaging(),
                 // token to send notification
-                rToken: rToken, 
+                rToken: rToken,
                 // course information
                 courseName: courseName,
                 index: index,
