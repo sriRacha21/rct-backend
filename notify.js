@@ -38,6 +38,7 @@ admin.firestore()
     });
 
 async function checkNotify( db ) {
+    console.log("Started checkNotify.");
     // loop over active trackers, which has already been populated
     trackersSnapshot.forEach(async trackerDoc => {
         // gather relevant fields
