@@ -60,6 +60,27 @@ async function checkNotify( db ) {
         const course = trackerDoc.get("courseNumber");
         const courseName = trackerDoc.get("course");
         const uid = trackerDoc.get("user");
+        // query SOC
+        const requestURI = `${baseCoursesURI}?subject=${subject}&semester=${intSeason[semester]}${year}&campus=NB&level=UG`;
+        console.log(`Requesting URI: ${requestURI}`);
+        let courses;
+        try {
+            courses = await getJSON(requestURI);
+        } catch( e ) {
+            console.error("SOC API Connection error:", e);
+            return;
+        }
+        const chosenCourse = courses.find(c => c.courseNumber == course);
+        if( !chosenCourse ) {
+            console.error(`Course ${course} could not be found for user ${uid}.`);
+            return;
+        }
+        // get section by index
+        if( !chosenCourse.sections ) return;
+        const chosenSection = chosenCourse.sections.find(s => s.index == index);
+        if( !chosenSection ) return;
+        // if the section isn't open return
+        if( !chosenSection.openStatus ) return;
         // find users that match the uid from the trackerdoc
         const usersSnapshot = await db
             .collection("users")
@@ -69,27 +90,8 @@ async function checkNotify( db ) {
         usersSnapshot.forEach(async userDoc => {
             // get relevant fields
             const rToken = userDoc.get("rToken");
-            // query SOC
-            const requestURI = `${baseCoursesURI}?subject=${subject}&semester=${intSeason[semester]}${year}&campus=NB&level=UG`;
-            console.log(`Requesting URI: ${requestURI}`);
-            let courses;
-            try {
-                courses = await getJSON(requestURI);
-            } catch( e ) {
-                console.error("SOC API Connection error:", e);
-                return;
-            }
-            const chosenCourse = courses.find(c => c.courseNumber == course);
-            if( !chosenCourse ) {
-                console.error(`Course ${course} could not be found for user ${uid}.`);
-                return;
-            }
-            // get section by index
-            if( !chosenCourse.sections ) return;
-            const chosenSection = chosenCourse.sections.find(s => s.index == index);
-            if( !chosenSection ) return;
-            // if section is open notify user
-            if( chosenSection.openStatus ) sendOpenCourseNotif({
+            // send course open notif
+            sendOpenCourseNotif({
                 // messaging service
                 messaging: admin.messaging(),
                 // token to send notification
