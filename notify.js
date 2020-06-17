@@ -10,6 +10,8 @@ const getJSON = bent('json');
 const baseCoursesURI = "http://sis.rutgers.edu/oldsoc/courses.json";
 // every 30 seconds
 const repeatRate = 30000;
+// determine if time is in non-check range
+const SOCnonUpdate = (date) => { return date.getHours() >= 2 && (date.getHours() < 6 || (date.getHours() == 6 && date.getMinutes() <= 30)); }
 // dictionary
 const intSeason = {
     'winter': 0,
@@ -17,8 +19,9 @@ const intSeason = {
     'summer': 7,
     'fall': 9
 }
-// user snapshots array
+// user snapshots CollectionReference and lock flag
 let trackersSnapshot;
+let trackersSnapshotLock = false;
 
 // this function populates the userssnapshot obj
 async function populateSnapshot( db ) {
@@ -33,14 +36,22 @@ admin.firestore()
     .collection("trackers")
     .where("active", "==", true)
     .onSnapshot(querySnapshot => {
+        // if there is a lock on the trackers snapshot (the collection is being iterated through) do not update it.
+        if( trackersSnapshotLock ) return;
         console.log("User event listener fired.");
         trackersSnapshot = querySnapshot;
     });
 
 async function checkNotify( db ) {
+    // don't check at 2:00 - 6:30 since SOC does not update at this time
+    const now = new Date();
+    if( SOCnonUpdate(now) ) return;
+
     console.log("Started checkNotify.");
     // loop over active trackers, which has already been populated
     trackersSnapshot.forEach(async trackerDoc => {
+        // lock the trackers snapshot so they can't be updated while they are being iterated through
+        trackersSnapshotLock = true; 
         // gather relevant fields
         const subject = trackerDoc.get("subject");
         const semester = trackerDoc.get("semester");
@@ -65,7 +76,7 @@ async function checkNotify( db ) {
             try {
                 courses = await getJSON(requestURI);
             } catch( e ) {
-                console.error( "SOC API Connection error:", e );
+                console.error("SOC API Connection error:", e);
                 return;
             }
             const chosenCourse = courses.find(c => c.courseNumber == course);
@@ -93,6 +104,8 @@ async function checkNotify( db ) {
             });
         })
     })
+    // unlock the flag
+    trackersSnapshotLock = false;
     // start the function again in 30 seconds
     setTimeout( checkNotify, repeatRate, db );
 }
