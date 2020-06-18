@@ -43,6 +43,8 @@ admin.firestore()
     });
 
 async function checkNotify( db ) {
+    // start the function again in 30 seconds
+    setTimeout( checkNotify, repeatRate, db );
     // don't check at 2:00 - 6:30 since SOC does not update at this time
     const now = new Date();
     if( SOCnonUpdate(now) ) return;
@@ -108,8 +110,6 @@ async function checkNotify( db ) {
     })
     // unlock the flag
     trackersSnapshotLock = false;
-    // start the function again in 30 seconds
-    setTimeout( checkNotify, repeatRate, db );
 }
 
 // send the notification
