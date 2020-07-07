@@ -53,7 +53,7 @@ async function checkNotify( db ) {
     // loop over active trackers, which has already been populated
     trackersSnapshot.forEach(async trackerDoc => {
         // lock the trackers snapshot so they can't be updated while they are being iterated through
-        trackersSnapshotLock = true; 
+        trackersSnapshotLock = true;
         // gather relevant fields
         const subject = trackerDoc.get("subject");
         const semester = trackerDoc.get("semester");
@@ -144,9 +144,15 @@ async function sendOpenCourseNotif({ messaging, rToken, courseName, index, year,
         trackerDoc.ref.update({
             active: false
         })
+        .then(() => {
+            console.log("Successfully updated document:", trackerDoc.ref.id);
+        })
+        .catch((err) => {
+            console.error("Error updating document:", trackerDoc.ref.id);
+        })
     })
     .catch((error) => {
-        console.log('Error sending message:', error);
+        console.error('Error sending message:', error);
     });
 }
 
