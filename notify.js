@@ -8,8 +8,8 @@ const bent = require('bent');
 const getJSON = bent('json');
 // constants
 const baseCoursesURI = "http://sis.rutgers.edu/oldsoc/courses.json";
-// every 30 seconds
-const repeatRate = 30000;
+// every 20 seconds
+const repeatRate = 20000;
 // determine if time is in non-check range
 const SOCnonUpdate = (date) => { return date.getHours() >= 2 && (date.getHours() < 6 || (date.getHours() == 6 && date.getMinutes() <= 30)); }
 // dictionary
