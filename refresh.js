@@ -3,11 +3,16 @@
 const fs = require('fs');
 const bent = require('bent');
 const prettyMs = require('pretty-ms');
+
 const admin = require('firebase-admin');
+
+var serviceAccount = require("/root/rct-backend/rutgers-course-tracker-firebase-adminsdk-7pvr2-00983f5cf0.json")
+
 const app = admin.initializeApp({
-    credential: admin.credential.applicationDefault(),
+    credential: admin.credential.cert(serviceAccount),
     databaseURL: 'https://rutgers-course-tracker.firebaseio.com/'
 });
+
 
 // constants
 const DEBUG = true;

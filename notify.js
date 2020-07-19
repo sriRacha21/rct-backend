@@ -1,9 +1,15 @@
 #!/usr/bin/env node
+
+
 const admin = require('firebase-admin');
+
+var serviceAccount = require("/root/rct-backend/rutgers-course-tracker-firebase-adminsdk-7pvr2-00983f5cf0.json")
+
 const app = admin.initializeApp({
-    credential: admin.credential.applicationDefault(),
+    credential: admin.credential.cert(serviceAccount),
     databaseURL: 'https://rutgers-course-tracker.firebaseio.com/'
 });
+
 const bent = require('bent');
 const getJSON = bent('json');
 // constants
@@ -50,10 +56,10 @@ async function checkNotify( db ) {
     if( SOCnonUpdate(now) ) return;
 
     console.log("Started checkNotify.");
+    // lock the trackers snapshot so they can't be updated while they are being iterated through
+    trackersSnapshotLock = true;
     // loop over active trackers, which has already been populated
     trackersSnapshot.forEach(async trackerDoc => {
-        // lock the trackers snapshot so they can't be updated while they are being iterated through
-        trackersSnapshotLock = true;
         // gather relevant fields
         const subject = trackerDoc.get("subject");
         const semester = trackerDoc.get("semester");
@@ -108,7 +114,7 @@ async function checkNotify( db ) {
             });
         })
     })
-    // unlock the flag
+    // unlock the snapshot updating flag
     trackersSnapshotLock = false;
 }
 
@@ -152,7 +158,7 @@ async function sendOpenCourseNotif({ messaging, rToken, courseName, index, year,
         })
     })
     .catch((error) => {
-        console.error('Error sending message:', error);
+        console.error(`Error sending message to rToken ${rToken}:`, error);
     });
 }
 

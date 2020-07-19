@@ -9,12 +9,12 @@
   "author": "sriRacha21",
   "license": "ISC",
   "devDependencies": {
-    "typescript": "^3.9.5"
+    "typescript": "^3.9.7"
   },
   "dependencies": {
-    "bent": "^7.3.5",
-    "firebase-admin": "^8.12.1",
-    "firebase-functions": "^3.7.0",
+    "bent": "^7.3.7",
+    "firebase-admin": "^8.13.0",
+    "firebase-functions": "^3.8.0",
     "pretty-ms": "^7.0.0"
   }
 }
