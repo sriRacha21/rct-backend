@@ -62,15 +62,23 @@ def firestoreCourseData(db):
 
         # Going through the courses in the subject
         for course in courses:
-            sections = course["sections"]
-
+            sections = course['sections']
+            title = course['title']
+            subject = course['subject']
+            courseNumber = course['courseNumber']
             # going through the sections in the course
             for section in sections:
-                print(course['title'])
-                print(section['number'])
-                print(course['subject'])
-                print(course['courseNumber'])
+                index = section['index']
+                sectionNumber = section['number']
 
+                indexMap[index] = {
+                    'subject': subject,
+                    'name': title,
+                    'secion': sectionNumber,
+                    'course': courseNumber
+                }
+
+        print(indexMap['15402'])
         break
         # sleep(2)
 
