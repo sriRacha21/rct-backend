@@ -74,13 +74,37 @@ def firestoreCourseData(db):
                 indexMap[index] = {
                     'subject': subject,
                     'name': title,
-                    'secion': sectionNumber,
+                    'section': sectionNumber,
                     'course': courseNumber
                 }
 
-        print(indexMap['15402'])
         break
         # sleep(2)
+    updateFirestore(indexMap)
+
+def updateFirestore(indexMap: dict):
+    db = firestore.client()
+    seasonColl = db.collection("pee")
+
+    seasonColl.document("sections").set({
+        'sections' : returnValueDictionary(indexMap, 'section')
+        })
+
+    seasonColl.document("names").set({
+        'names' : returnValueDictionary(indexMap, 'name')
+        })
+
+    seasonColl.document("subjects").set({
+        'subjects' : returnValueDictionary(indexMap, 'subject')
+        })
+
+    seasonColl.document("courses").set({
+        'courses' : returnValueDictionary(indexMap, 'course')
+        })
+
+
+def returnValueDictionary(indexMap: dict, value: str) -> dict:
+    return dict(map(lambda kv: (kv[0], kv[1][value]), indexMap.items()))
 
 firestoreCourseData(firestore.client())
 
