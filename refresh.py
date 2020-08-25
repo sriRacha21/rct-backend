@@ -47,7 +47,9 @@ def firestoreCourseData(db):
 
     indexMap = {}
 
+    # Going through the subjects to get request all the courses in that subject
     for x in subjects:
+
         code = x['code']
         requestCoursesURI = f'{baseCoursesURI}?subject={code}&semester={9}{2020}&campus=NB&level=U'
         try:
@@ -58,9 +60,17 @@ def firestoreCourseData(db):
 
         courses = json.loads(res.text)
 
+        # Going through the courses in the subject
         for course in courses:
-            print(course['sections'])
-        # print(course)
+            sections = course["sections"]
+
+            # going through the sections in the course
+            for section in sections:
+                print(course['title'])
+                print(section['number'])
+                print(course['subject'])
+                print(course['courseNumber'])
+
         break
         # sleep(2)
 
