@@ -4,16 +4,24 @@ import os
 import requests
 import json
 from time import sleep
+import datetime
 
 #constants
 baseSubjectsURI = "https://sis.rutgers.edu/oldsoc/subjects.json"
 baseCoursesURI = "http://sis.rutgers.edu/oldsoc/courses.json"
-intSeason = {
+seasonInt = {
     'winter': 0,
     'spring': 1,
     'summer': 7,
     'fall': 9
 }
+intSeason = {
+    0: 'winter',
+    1: 'spring',
+    7: 'summer',
+    9: 'fall'
+}
+year = datetime.datetime.now().year
 
 # credentials
 cred = credentials.Certificate('./rutgers-course-tracker-firebase-adminsdk-7pvr2-00983f5cf0.json')
@@ -25,14 +33,27 @@ app = firebase_admin.initialize_app(cred, {
 
 
 # Helper functions
-def getSeasonFromFile():
+
+## Get Semeseter from file
+def getSemesterFromFile():
     return
+
+## Cleaner wrap of using map function
+
+def returnValueDictionary(indexMap: dict, value: str) -> dict:
+    return dict(map(lambda kv: (kv[0], kv[1][value]), indexMap.items()))
 
 # main function for updating firestore
 
-def firestoreCourseData(db):
+def firestoreCourseData(db, season: int):
     #https://sis.rutgers.edu/oldsoc/subjects.json?semester=92020&campus=NB&level=U
-    requestURI = f'{baseSubjectsURI}?semester={9}{2020}&campus=NB&level=U'
+    isSpring = season == 1
+    currentYear = year
+
+    if isSpring:
+        currentYear +=1
+
+    requestURI = f'{baseSubjectsURI}?semester={season}{currentYear}&campus=NB&level=U'
     print("Requesting URI:", requestURI)
     print("hi")
 
@@ -49,9 +70,8 @@ def firestoreCourseData(db):
 
     # Going through the subjects to get request all the courses in that subject
     for x in subjects:
-
         code = x['code']
-        requestCoursesURI = f'{baseCoursesURI}?subject={code}&semester={9}{2020}&campus=NB&level=U'
+        requestCoursesURI = f'{baseCoursesURI}?subject={code}&semester={season}{currentYear}&campus=NB&level=U'
         try:
             res = requests.get(requestCoursesURI)
         except:
@@ -80,11 +100,11 @@ def firestoreCourseData(db):
 
         break
         # sleep(2)
-    updateFirestore(indexMap)
+    updateFirestore(indexMap, intSeason[season])
 
-def updateFirestore(indexMap: dict):
+def updateFirestore(indexMap: dict, season: str):
     db = firestore.client()
-    seasonColl = db.collection("pee")
+    seasonColl = db.collection(season)
 
     seasonColl.document("sections").set({
         'sections' : returnValueDictionary(indexMap, 'section')
@@ -103,8 +123,14 @@ def updateFirestore(indexMap: dict):
         })
 
 
-def returnValueDictionary(indexMap: dict, value: str) -> dict:
-    return dict(map(lambda kv: (kv[0], kv[1][value]), indexMap.items()))
+def enter():
+    f = open("season.txt", "r")
+    sem = f.readline().rsplit('\n')[0]
+    f.close()
 
-firestoreCourseData(firestore.client())
+    seasons = [9, 7] if sem == 'fall' else [1, 0];
 
+    for season in seasons:
+        firestoreCourseData(firestore.client(), season)
+
+enter()
