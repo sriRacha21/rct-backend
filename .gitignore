@@ -110,3 +110,4 @@ dist/
 
 # ignore output folder, except for the placeholder
 output.txt
+.vscode
