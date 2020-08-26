@@ -31,7 +31,6 @@ app = firebase_admin.initialize_app(cred, {
     'databaseURL': 'https://rutgers-course-tracker.firebaseio.com/'
 })
 
-
 # Helper functions
 
 ## Get Semeseter from file
@@ -47,16 +46,19 @@ def returnValueDictionary(indexMap: dict, value: str) -> dict:
 
 def firestoreCourseData(db, season: int):
     #https://sis.rutgers.edu/oldsoc/subjects.json?semester=92020&campus=NB&level=U
+
+    # Checks for spring semester and changes year accordingly
     isSpring = season == 1
     currentYear = year
 
     if isSpring:
         currentYear +=1
 
+    # Constructs the URI
     requestURI = f'{baseSubjectsURI}?semester={season}{currentYear}&campus=NB&level=U'
     print("Requesting URI:", requestURI)
-    print("hi")
 
+    # Sends a request to the URI
     res = None
     try:
         res = requests.get(requestURI)
@@ -64,8 +66,10 @@ def firestoreCourseData(db, season: int):
         print("SOC API Connection error.")
         return
 
+    # Loads in the JSON data into a object
     subjects = json.loads(res.text)
 
+    # Final map contain relevent data from seach sections
     indexMap = {}
 
     # Going through the subjects to get request all the courses in that subject
@@ -98,10 +102,9 @@ def firestoreCourseData(db, season: int):
                     'course': courseNumber
                 }
 
-        break
-        # sleep(2)
     updateFirestore(indexMap, intSeason[season])
 
+# Method that takes in a map of sections values and updates firestore
 def updateFirestore(indexMap: dict, season: str):
     db = firestore.client()
     seasonColl = db.collection(season)
@@ -122,15 +125,20 @@ def updateFirestore(indexMap: dict, season: str):
         'courses' : returnValueDictionary(indexMap, 'course')
         })
 
-
+# Entry method
 def enter():
+
+    # Gets current main semester from the text file
     f = open("season.txt", "r")
     sem = f.readline().rsplit('\n')[0]
     f.close()
 
+    # Sets the seasons according to the int value
     seasons = [9, 7] if sem == 'fall' else [1, 0];
 
+    # Starts the process of going to SOC and setting data in firestore
     for season in seasons:
         firestoreCourseData(firestore.client(), season)
 
+# Start script
 enter()
