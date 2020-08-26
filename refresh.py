@@ -49,10 +49,7 @@ def firestoreCourseData(db, season: int):
 
     # Checks for spring semester and changes year accordingly
     isSpring = season == 1
-    currentYear = year
-
-    if isSpring:
-        currentYear +=1
+    currentYear = year + (1 if isSpring else 0)
 
     # Constructs the URI
     requestURI = f'{baseSubjectsURI}?semester={season}{currentYear}&campus=NB&level=U'
