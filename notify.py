@@ -3,6 +3,7 @@ from firebase_admin import credentials, db, firestore, messaging
 import os
 import requests
 import json
+import threading
 # typing
 from typing import List
 
@@ -28,9 +29,10 @@ app = firebase_admin.initialize_app(cred, {
 # res = requests.get('{}?year=2020&term=9&campus=NB'.format(baseCoursesURI))
 # classes = res.json()
 
-def checkNotify( db ):
-    trackersSnapshot = db.collection("trackers").where("active", "==", True).get()
+trackersSnapshot = []
 
+def checkNotify( db ):
+    # trackersSnapshot = db.collection("trackers").where("active", "==", True).get()
     seen = False
     for trackerDoc in trackersSnapshot:
         if seen:
@@ -53,16 +55,17 @@ def checkNotify( db ):
             res = requests.get(requestURI)
         except:
             print("SOC API Connection error.")
-            return
+            continue
         openSections = listToDict(json.loads(res.text))
         # guard clause for class not open
         if index not in openSections:
-            return
+            continue
         # get users
         usersSnapshot = db.collection("users").where("user", "==", uid).limit(1).get()
         for userDoc in usersSnapshot:
             rToken = userDoc.get("rToken")
             sendNotif( rToken, courseName, index, year, semester, trackerDoc )
+            trackerDoc.reference.update({'active': False})
 
     # courses = db.collection("fall").document("courses").get().to_dict()["courses"]
     # print("courses:", courses)
@@ -111,5 +114,19 @@ def listToDict( strings: List[str] ) -> dict:
     for string in strings:
         dictionary[string] = True
     return dictionary
+
+callback_done = threading.Event()
+
+# Create a callback on_snapshot function to capture changes
+def on_snapshot(doc_snapshot, changes, read_time):
+    trackersSnapshot = doc_snapshot
+    for doc in doc_snapshot:
+        print(f'Received document snapshot: {doc.id}')
+    callback_done.set()
+
+doc_ref = db.collection("trackers").where("active", "==", True)
+
+# Watch the document
+doc_watch = doc_ref.on_snapshot(on_snapshot)
 
 checkNotify( firestore.client() )
