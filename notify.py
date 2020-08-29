@@ -30,14 +30,12 @@ app = firebase_admin.initialize_app(cred, {
 # classes = res.json()
 
 trackersSnapshot = []
+trackersSnapshotLock = False
 
 def checkNotify( db ):
     # trackersSnapshot = db.collection("trackers").where("active", "==", True).get()
-    seen = False
+    trackersSnapshotLock = True
     for trackerDoc in trackersSnapshot:
-        if seen:
-            return
-        seen = True
         # get all fields
         subject = trackerDoc.get("subject")
         semester = trackerDoc.get("semester")
@@ -65,8 +63,8 @@ def checkNotify( db ):
         for userDoc in usersSnapshot:
             rToken = userDoc.get("rToken")
             sendNotif( rToken, courseName, index, year, semester, trackerDoc )
-            trackerDoc.reference.update({'active': False})
 
+    trackersSnapshotLock = False
     # courses = db.collection("fall").document("courses").get().to_dict()["courses"]
     # print("courses:", courses)
 def sendNotif( rToken, courseName, index, year, semester, trackerDoc ):
@@ -89,6 +87,7 @@ def sendNotif( rToken, courseName, index, year, semester, trackerDoc ):
     )
     try:
         res = messaging.send( message )
+        trackerDoc.reference.update({'active': False})
         print("Message sent:", res)
     except Exception as e:
         print("Exception raised:", e)
@@ -119,6 +118,8 @@ callback_done = threading.Event()
 
 # Create a callback on_snapshot function to capture changes
 def on_snapshot(doc_snapshot, changes, read_time):
+    if trackersSnapshotLock:
+        return
     trackersSnapshot = doc_snapshot
     for doc in doc_snapshot:
         print(f'Received document snapshot: {doc.id}')
