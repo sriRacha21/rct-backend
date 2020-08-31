@@ -3,7 +3,7 @@
 
 const admin = require('firebase-admin');
 
-var serviceAccount = require("/root/rct-backend/rutgers-course-tracker-firebase-adminsdk-7pvr2-00983f5cf0.json")
+var serviceAccount = require("./rutgers-course-tracker-firebase-adminsdk-7pvr2-00983f5cf0.json")
 
 const app = admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
@@ -12,8 +12,10 @@ const app = admin.initializeApp({
 
 const bent = require('bent');
 const getJSON = bent('json');
+const getBuffer = bent('buffer');
 // constants
-const baseCoursesURI = "http://sis.rutgers.edu/oldsoc/courses.json";
+const baseCoursesURI_ = "http://sis.rutgers.edu/oldsoc/courses.json";
+const baseCoursesURI = "https://sis.rutgers.edu/soc/api/openSections.gzip?campus=NB"
 // every 20 seconds
 const repeatRate = 20000;
 // determine if time is in non-check range
@@ -58,6 +60,19 @@ async function checkNotify( db ) {
     console.log("Started checkNotify.");
     // lock the trackers snapshot so they can't be updated while they are being iterated through
     trackersSnapshotLock = true;
+    // request new information from SOC
+    const requestURI = `${baseCoursesURI}&year=${year}&term=${intSeason[semester]}}`
+    console.log(`Requesting URI: ${requestURI}`);
+    let courses;
+    try {
+        let dataBuffer = await getBuffer(requestURI);
+        let dataString = dataBuffer.toString();
+        let coursesArr = JSON.parse(dataString);
+        courses = arrToObj(coursesArr);
+    } catch( e ) {
+        console.error("SOC API Connection error:", e);
+        return;
+    }
     // loop over active trackers, which has already been populated
     trackersSnapshot.forEach(async trackerDoc => {
         // gather relevant fields
@@ -68,27 +83,12 @@ async function checkNotify( db ) {
         const course = trackerDoc.get("courseNumber");
         const courseName = trackerDoc.get("course");
         const uid = trackerDoc.get("user");
-        // query SOC
-        const requestURI = `${baseCoursesURI}?subject=${subject}&semester=${intSeason[semester]}${year}&campus=NB&level=UG`;
-        console.log(`Requesting URI: ${requestURI}`);
-        let courses;
-        try {
-            courses = await getJSON(requestURI);
-        } catch( e ) {
-            console.error("SOC API Connection error:", e);
+
+        const chosenSection = courses[index];
+        if( !chosenSection ) {
+            console.error(`Index ${index} could not be found for user ${uid}.`);
             return;
         }
-        const chosenCourse = courses.find(c => c.courseNumber == course);
-        if( !chosenCourse ) {
-            console.error(`Course ${course} could not be found for user ${uid}.`);
-            return;
-        }
-        // get section by index
-        if( !chosenCourse.sections ) return;
-        const chosenSection = chosenCourse.sections.find(s => s.index == index);
-        if( !chosenSection ) return;
-        // if the section isn't open return
-        if( !chosenSection.openStatus ) return;
         // find users that match the uid from the trackerdoc
         const usersSnapshot = await db
             .collection("users")
@@ -160,6 +160,14 @@ async function sendOpenCourseNotif({ messaging, rToken, courseName, index, year,
     .catch((error) => {
         console.error(`Error sending message to rToken ${rToken}:`, error);
     });
+}
+
+function arrToObj( arr ) {
+    const obj = {};
+    arr.forEach( elem => {
+        obj[elem] = true;
+    }) 
+    return obj;
 }
 
 // run

@@ -3,9 +3,11 @@ from firebase_admin import credentials, db, firestore, messaging
 import os
 import requests
 import json
+# system
 import threading
 import time
 import datetime
+import copy
 # typing
 from typing import List
 
@@ -43,11 +45,14 @@ trackersSnapshotLock = False
 def checkNotify(db, season: int):
     # trackersSnapshot = db.collection("trackers").where("active", "==", True).get()
     trackersSnapshotLock = True
+    print("Set lock to true")
     year = datetime.datetime.now().year
     isSpring = season == 1
     currentYear = year + (1 if isSpring else 0)
 
     openSections = listOfOpenIndex(currentYear, season)
+
+    print("trackersSnapshot:", trackersSnapshot)
 
     for trackerDoc in trackersSnapshot:
         # get all fields
@@ -60,7 +65,7 @@ def checkNotify(db, season: int):
         uid = trackerDoc.get("user")
 
         # guard clause for class not open
-
+        print("index:",index,"openSections:",openSections)
         if index not in openSections:
             continue
 
@@ -144,9 +149,12 @@ def on_snapshot(doc_snapshot, changes, read_time):
     while trackersSnapshotLock:
         continue
 
-    trackersSnapshot = doc_snapshot
-    for doc in doc_snapshot:
-        print(f'Received document snapshot: {doc.id}')
+    print("Set tracker snapshot")
+
+    trackersSnapshot = copy.deepcopy(doc_snapshot)
+    print(len(trackersSnapshot))
+    # for doc in doc_snapshot:
+    #     print(f'Received document snapshot: {doc.id}')
     callback_done.set()
 
 doc_ref = db.collection("trackers").where("active", "==", True)

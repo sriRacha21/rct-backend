@@ -12,9 +12,12 @@
     "typescript": "^3.9.7"
   },
   "dependencies": {
-    "bent": "^7.3.7",
+    "bent": "^7.3.10",
     "firebase-admin": "^8.13.0",
     "firebase-functions": "^3.8.0",
+    "gaxios": "^3.1.0",
+    "google-auth-library": "^6.0.6",
+    "google-gax": "^2.7.0",
     "pretty-ms": "^7.0.0"
   }
 }
