@@ -10,14 +10,17 @@ const app = admin.initializeApp({
     databaseURL: 'https://rutgers-course-tracker.firebaseio.com/'
 });
 
+const fs = require('fs');
 const bent = require('bent');
 const getJSON = bent('json');
 const getBuffer = bent('buffer');
+// i wrote this
+const { getSeasonFromFile } = require('./seasonFromFile.js');
 // constants
 const baseCoursesURI_ = "http://sis.rutgers.edu/oldsoc/courses.json";
 const baseCoursesURI = "https://sis.rutgers.edu/soc/api/openSections.gzip?campus=NB"
 // every 20 seconds
-const repeatRate = 20000;
+const repeatRate = 15000;
 // determine if time is in non-check range
 const SOCnonUpdate = (date) => { return date.getHours() >= 2 && (date.getHours() < 6 || (date.getHours() == 6 && date.getMinutes() <= 30)); }
 // dictionary
@@ -50,9 +53,9 @@ admin.firestore()
         trackersSnapshot = querySnapshot;
     });
 
-async function checkNotify( db ) {
+async function checkNotify( db, semesterPassed, yearPassed ) {
     // start the function again in 30 seconds
-    setTimeout( checkNotify, repeatRate, db );
+    setTimeout( checkNotify, repeatRate, db, semesterPassed, yearPassed );
     // don't check at 2:00 - 6:30 since SOC does not update at this time
     const now = new Date();
     if( SOCnonUpdate(now) ) return;
@@ -61,7 +64,19 @@ async function checkNotify( db ) {
     // lock the trackers snapshot so they can't be updated while they are being iterated through
     trackersSnapshotLock = true;
     // request new information from SOC
-    const requestURI = `${baseCoursesURI}&year=${year}&term=${intSeason[semester]}}`
+    const yearToRequest = yearPassed 
+        ? yearPassed 
+        : (trackersSnapshot.length > 0 
+            ? trackersSnapshot[0].get("createdTime").toDate().getUTCFullYear() 
+            : new Date().getFullYear());
+    const semesterToRequest = semesterPassed
+        ? semesterPassed
+        : (trackersSnapshot.length > 0 
+            ? trackersSnapshot[0].get("semester") 
+            : (getSeasonFromFile("season.txt") 
+                ? intSeason[getSeasonFromFile("season.txt").toLowerCase()]
+                : 1));
+    const requestURI = `${baseCoursesURI}&year=${yearToRequest}&term=${semesterToRequest}`
     console.log(`Requesting URI: ${requestURI}`);
     let courses;
     try {
@@ -86,7 +101,7 @@ async function checkNotify( db ) {
 
         const chosenSection = courses[index];
         if( !chosenSection ) {
-            console.error(`Index ${index} could not be found for user ${uid}.`);
+            // console.log(`Index ${index} could not be found for user ${uid}.`);
             return;
         }
         // find users that match the uid from the trackerdoc
@@ -158,7 +173,8 @@ async function sendOpenCourseNotif({ messaging, rToken, courseName, index, year,
         })
     })
     .catch((error) => {
-        console.error(`Error sending message to rToken ${rToken}:`, error);
+        if( error.message != "Requested entity was not found." )
+            console.error(`Error sending message to rToken ${rToken}:`, error.message);
     });
 }
 
@@ -173,5 +189,6 @@ function arrToObj( arr ) {
 // run
 (async () => {
     await populateSnapshot( admin.firestore() );
-    await checkNotify( admin.firestore() );
+    checkNotify( admin.firestore(), 9, 2020 );
+    checkNotify( admin.firestore(), 7, 2020 );
 })();

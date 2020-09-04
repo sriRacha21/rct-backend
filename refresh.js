@@ -3,6 +3,7 @@
 const fs = require('fs');
 const bent = require('bent');
 const prettyMs = require('pretty-ms');
+const { getSeasonFromFile } = require('./seasonFromFile.js');
 
 const admin = require('firebase-admin');
 
@@ -19,12 +20,6 @@ const DEBUG = true;
 const baseSubjectsURI = "https://sis.rutgers.edu/oldsoc/subjects.json";
 const baseCoursesURI = "http://sis.rutgers.edu/oldsoc/courses.json";
 const getJSON = bent('json');
-const seasons = {
-    SPRING: 'spring',
-    WINTER: 'winter',
-    FALL: 'fall',
-    SUMMER: 'summer'
-}
 const seasonInt = {
     0: 'winter',
     1: 'spring',
@@ -162,32 +157,6 @@ async function firestoreCourseData( db ) {
     // print out how long it took
     const after = Date.now();
     console.log(`Operation completed in ${prettyMs(after-before)}.`);
-}
-
-function getSeasonFromFile(path) {
-    // get file contents
-    let fileContents; 
-    try {
-        fileContents = fs.readFileSync(path).toString();
-    } catch( err ) {
-        console.error("Not able to read file located at: ", path);
-    }
-
-    // determine whether the file contains fall or spring
-    const possSeasons = [seasons.SPRING, seasons.FALL];
-    let season = "";
-    possSeasons.forEach( possSeason => {
-        if( season == "" && fileContents.includes(possSeason) )
-            season = possSeason;
-    }) 
-
-    // if no season was found print and exit
-    if( season == "" ) {
-        console.error(`Seasons ${possSeasons} were not found in file!`);
-        process.exit();
-    }
-    // return if a season was found
-    return season;
 }
 
 // run
