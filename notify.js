@@ -99,6 +99,10 @@ async function checkNotify( db, semesterPassed, yearPassed ) {
         const courseName = trackerDoc.get("course");
         const uid = trackerDoc.get("user");
 
+        if( intSeason[semester] != semesterPassed) {
+            return;
+        }
+
         const chosenSection = courses[index];
         if( !chosenSection ) {
             // console.log(`Index ${index} could not be found for user ${uid}.`);
