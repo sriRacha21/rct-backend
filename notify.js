@@ -65,17 +65,17 @@ async function checkNotify( db, semesterPassed, yearPassed ) {
     trackersSnapshotLock = true;
     // request new information from SOC
     const yearToRequest = yearPassed 
-        ? yearPassed 
-        : (trackersSnapshot.length > 0 
-            ? trackersSnapshot[0].get("createdTime").toDate().getUTCFullYear() 
-            : new Date().getFullYear());
+        // ? yearPassed 
+        // : (trackersSnapshot.length > 0 
+        //     ? trackersSnapshot[0].get("createdTime").toDate().getUTCFullYear() 
+        //     : new Date().getFullYear());
     const semesterToRequest = semesterPassed
-        ? semesterPassed
-        : (trackersSnapshot.length > 0 
-            ? trackersSnapshot[0].get("semester") 
-            : (getSeasonFromFile("season.txt") 
-                ? intSeason[getSeasonFromFile("season.txt").toLowerCase()]
-                : 1));
+        // ? semesterPassed
+        // : (trackersSnapshot.length > 0 
+        //     ? trackersSnapshot[0].get("semester") 
+        //     : (getSeasonFromFile("season.txt") 
+        //         ? intSeason[getSeasonFromFile("season.txt").toLowerCase()]
+        //         : 1));
     const requestURI = `${baseCoursesURI}&year=${yearToRequest}&term=${semesterToRequest}`
     console.log(`Requesting URI: ${requestURI}`);
     let courses;
@@ -109,6 +109,7 @@ async function checkNotify( db, semesterPassed, yearPassed ) {
             return;
         }
         // find users that match the uid from the trackerdoc
+        
         const usersSnapshot = await db
             .collection("users")
             .where("user", "==", uid)
@@ -126,12 +127,12 @@ async function checkNotify( db, semesterPassed, yearPassed ) {
                 // course information
                 courseName: courseName,
                 index: index,
-                year: year,
+                year: yearPassed,
                 semester: semester,
                 // document to turn to false
                 trackerDoc: trackerDoc
             });
-        })
+        }) 
     })
     // unlock the snapshot updating flag
     trackersSnapshotLock = false;
@@ -179,6 +180,21 @@ async function sendOpenCourseNotif({ messaging, rToken, courseName, index, year,
     .catch((error) => {
         if( error.message != "Requested entity was not found." )
             console.error(`Error sending message to rToken ${rToken}:`, error.message);
+
+        if( error.message  == "Requested entity was not found.") {
+            console.error(`${rToken} does not exist anymore:`, error.message);
+
+            // turn doc active to false
+            trackerDoc.ref.update({
+                active: false
+            })
+            .then(() => {
+                console.log("Successfully updated document:", trackerDoc.ref.id);
+            })
+            .catch((err) => {
+                console.error("Error updating document:", trackerDoc.ref.id);
+            })
+        }
     });
 }
 

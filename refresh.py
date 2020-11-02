@@ -24,7 +24,8 @@ intSeason = {
 year = datetime.datetime.now().year
 
 # credentials
-cred = credentials.Certificate('./rutgers-course-tracker-firebase-adminsdk-7pvr2-00983f5cf0.json')
+cred = credentials.Certificate('/root/rct-backend/rutgers-course-tracker-firebase-adminsdk-7pvr2-00983f5cf0.json')
+# /root/rct-backend/refresh.py
 
 # initialize the firebase admin app with a database URL
 app = firebase_admin.initialize_app(cred, {
