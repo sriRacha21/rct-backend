@@ -21,7 +21,7 @@ intSeason = {
     7: 'summer',
     9: 'fall'
 }
-year = datetime.datetime.now().year
+# year = datetime.datetime.now().year
 
 # credentials
 cred = credentials.Certificate('/root/rct-backend/rutgers-course-tracker-firebase-adminsdk-7pvr2-00983f5cf0.json')
@@ -45,12 +45,12 @@ def returnValueDictionary(indexMap: dict, value: str) -> dict:
 
 # main function for updating firestore
 
-def firestoreCourseData(db, season: int):
+def firestoreCourseData(db, season: int, year: int):
     #https://sis.rutgers.edu/oldsoc/subjects.json?semester=92020&campus=NB&level=U
 
     # Checks for spring semester and changes year accordingly
     isSpring = season == 1
-    currentYear = year + (1 if isSpring else 0)
+    currentYear = year
 
     # Constructs the URI
     requestURI = f'{baseSubjectsURI}?semester={season}{currentYear}&campus=NB&level=U'
@@ -127,8 +127,10 @@ def updateFirestore(indexMap: dict, season: str):
 def enter():
 
     # Gets current main semester from the text file
-    f = open("season.txt", "r")
-    sem = f.readline().rsplit('\n')[0]
+    f = open("/root/rct-backend/season.txt", "r")# /root/rct-backend/season.txt
+    fileBuffer = f.readlines()
+    sem = fileBuffer[0].rsplit('\n')[0]
+    year = int(fileBuffer[1].rsplit('\n')[0])
     f.close()
 
     # Sets the seasons according to the int value
@@ -136,7 +138,7 @@ def enter():
 
     # Starts the process of going to SOC and setting data in firestore
     for season in seasons:
-        firestoreCourseData(firestore.client(), season)
+        firestoreCourseData(firestore.client(), season, year)
 
 # Start script
 enter()
