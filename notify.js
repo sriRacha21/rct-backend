@@ -2,6 +2,7 @@
 
 
 const admin = require('firebase-admin');
+const { v4: uuidv4 } = require('uuid');
 
 var serviceAccount = require("./rutgers-course-tracker-firebase-adminsdk-7pvr2-00983f5cf0.json")
 
@@ -39,6 +40,7 @@ async function populateSnapshot( db ) {
     trackersSnapshot = await db
         .collection("trackers")
         .where("active", "==", true)
+        .where("year", "==", "2021")
         .get();
 }
 
@@ -46,6 +48,7 @@ async function populateSnapshot( db ) {
 admin.firestore()
     .collection("trackers")
     .where("active", "==", true)
+    .where("year", "==", "2021")
     .onSnapshot(querySnapshot => {
         // if there is a lock on the trackers snapshot (the collection is being iterated through) do not update it.
         if( trackersSnapshotLock ) return;
@@ -130,7 +133,8 @@ async function checkNotify( db, semesterPassed, yearPassed ) {
                 year: yearPassed,
                 semester: semester,
                 // document to turn to false
-                trackerDoc: trackerDoc
+                trackerDoc: trackerDoc,
+                uid: uid
             });
         }) 
     })
@@ -139,7 +143,7 @@ async function checkNotify( db, semesterPassed, yearPassed ) {
 }
 
 // send the notification
-async function sendOpenCourseNotif({ messaging, rToken, courseName, index, year, semester, trackerDoc }) {
+async function sendOpenCourseNotif({ messaging, rToken, courseName, index, year, semester, trackerDoc, uid }) {
     messaging.send({
         data: {
             index: index.toString(),
@@ -176,6 +180,15 @@ async function sendOpenCourseNotif({ messaging, rToken, courseName, index, year,
         .catch((err) => {
             console.error("Error updating document:", trackerDoc.ref.id);
         })
+
+        addNotifHistory(uid, `${courseName} (${index}) is now open!`, "Tap to open WebReg")
+        .then(()=>{
+            console.log("Successfully added notification history");
+        })
+        .catch((err) => {
+            console.error("Error setting notification history");
+        })
+
     })
     .catch((error) => {
         if( error.message != "Requested entity was not found." )
@@ -198,6 +211,18 @@ async function sendOpenCourseNotif({ messaging, rToken, courseName, index, year,
     });
 }
 
+const addNotifHistory = async (user, title, desc) => {
+    const db = admin.firestore();
+    const uuid = uuidv4();
+    const notif = {
+        user: user,
+        title: title,
+        description: desc,
+        sentTime: admin.firestore.Timestamp.fromDate(new Date())
+    }
+    await db.collection('notifications').doc(uuid).set(notif);
+}
+
 function arrToObj( arr ) {
     const obj = {};
     arr.forEach( elem => {
@@ -209,6 +234,6 @@ function arrToObj( arr ) {
 // run
 (async () => {
     await populateSnapshot( admin.firestore() );
-    checkNotify( admin.firestore(), 9, 2020 );
-    checkNotify( admin.firestore(), 7, 2020 );
+    checkNotify( admin.firestore(), 1, 2021 );
+    checkNotify( admin.firestore(), 0, 2021 );
 })();
